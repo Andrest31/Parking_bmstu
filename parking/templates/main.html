@@ -1,0 +1,85 @@
+{% load static %}
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Аренда места</title>
+    <link rel="stylesheet" href="{% static 'style-main.css' %}">
+    <link href="https://fonts.googleapis.com/css2?family=Dela+Gothic+One&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=DM+Sans:ital,opsz,wght@0,9..40,100..1000;1,9..40,100..1000&display=swap" rel="stylesheet">
+</head>
+<body>
+
+<header>
+    <a href="http://127.0.0.1:8000/hello" class="headout">
+        <div>
+            <h1>1830</h1>
+        </div>
+    </a>
+</header>
+
+<div class="main">
+    <h2>Аренда места</h2>
+
+    <!-- Кнопка корзины -->
+    <a href="{% if draft_order %}{% url 'cart' draft_order.id %}{% else %}# {% endif %}" class="cart-button">
+        <img src="{% static 'cart-icon.png' %}" alt="Корзина" class="cart-icon" />
+        {% if draft_order %}
+            <span class="cart-count">{{ draft_order.parkings.count }}</span>  <!-- Количество элементов в черновом заказе -->
+        {% endif %}
+    </a>
+        
+
+    <div class="categories">
+        <p>Время работы: </p>
+        <form>
+            <input type="text" name="text" class="search" placeholder="Поиск">
+            <input type="submit" name="submit" class="submit" value="Найти">
+        </form>
+    </div>
+
+    <div class="product-list" id="product-list">
+        {% if cards %}
+            {% for card in cards %}
+            <div class="product" data-place="{{ card.place }}">
+                <div class="product-card">
+                    <div class="image-container">
+                        <img src="{{ card.image_card }}" alt="{{ card.name }}">
+                    </div>
+                    <div class="name-pr-container">
+                        <div class="name">{{ card.name }}</div>
+                        <div class="pr">
+                            <a href="{% url 'information' card.id %}" class="details-link">подробнее ></a>
+                        </div>
+                        <div class="text">Количество мест: {{ card.sports }}</div>
+                        <div class="text">Время работы: {{ card.open_hour }}:00</div>
+                        <div class="text">{{ card.close_hour }}:00</div>
+                    </div>
+                    <div class="price">{{ card.price }}</div>
+                    
+                    <!-- Добавление поля ввода количества и кнопки "Арендовать" -->
+                    <form action="{% url 'add_to_cart' card.id %}" method="post" class="quantity-form">
+                        {% csrf_token %}
+                        <input type="hidden" name="current_url" value="{{ request.path }}">
+                        <input type="number" name="quantity" value="0" min="0" max="{{ card.sports }}" class="quantity-input" required>
+                        <button type="submit" class="add-to-cart-button">Арендовать</button>
+                    </form>
+
+                </div>
+            </div>
+            {% endfor %}
+        {% else %}
+            <p>Нет доступных парковок для выбранного времени.</p>
+        {% endif %}
+    </div>
+</div>
+
+<div class="footer">
+    <h2>Остались вопросы?</h2>
+    <p>+79999686720</p>
+    <p><a href="mailto:andrestvlad@gmail.com">andrestvlad@gmail.com</a></p>
+</div>
+
+</body>
+</html>
