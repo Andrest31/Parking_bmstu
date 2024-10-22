@@ -1,25 +1,41 @@
-"""
-URL configuration for bmstu_parking project.
-
-The `urlpatterns` list routes URLs to views. For more information please see:
-    https://docs.djangoproject.com/en/5.1/topics/http/urls/
-Examples:
-Function views
-    1. Add an import:  from my_app import views
-    2. Add a URL to urlpatterns:  path('', views.home, name='home')
-Class-based views
-    1. Add an import:  from other_app.views import Home
-    2. Add a URL to urlpatterns:  path('', Home.as_view(), name='home')
-Including another URLconf
-    1. Import the include() function: from django.urls import include, path
-    2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
-"""
-from django.contrib import admin
 from django.urls import path
-from parking import views
+from django.contrib import admin
+
+from stocks.views import (
+    ParkingListView, ParkingDetailView, ParkingCreateView, ParkingUpdateView, ParkingDeleteView,
+    AddParkingToDraftOrderView, AddImageToParkingView,
+    OrderListView, OrderDetailView, OrderUpdateView, OrderFormedView, OrderCompleteView, OrderDeleteView,
+    DeleteOrderParkingView, UpdateOrderParkingView,
+    UserRegisterView, UserUpdateView, LoginView, LogoutView
+)
 
 urlpatterns = [
-    path('hello/', views.hello),
-    path('info/<int:id>/', views.information, name='information'),
-    path('cart/<int:id>/', views.cart, name='cart'),
+    path('admin/', admin.site.urls),
+
+    # Паркинги (услуги)
+    path('parkings/', ParkingListView.as_view(), name='parking-list'),
+    path('parkings/<int:pk>/', ParkingDetailView.as_view(), name='parking-detail'),
+    path('parkings/create/', ParkingCreateView.as_view(), name='parking-create'),
+    path('parkings/<int:pk>/update/', ParkingUpdateView.as_view(), name='parking-update'),
+    path('parkings/<int:pk>/delete/', ParkingDeleteView.as_view(), name='parking-delete'),
+    path('parkings/<int:pk>/add-to-draft/', AddParkingToDraftOrderView.as_view(), name='add-parking-to-draft'),
+    path('parkings/<int:pk>/add-image/', AddImageToParkingView.as_view(), name='add-image-to-parking'),
+
+    # Заявки
+    path('orders/', OrderListView.as_view(), name='order-list'),
+    path('orders/<int:pk>/', OrderDetailView.as_view(), name='order-detail'),
+    path('orders/<int:pk>/update/', OrderUpdateView.as_view(), name='order-update'),
+    path('orders/<int:pk>/form/', OrderFormedView.as_view(), name='order-formed'),
+    path('orders/<int:pk>/complete/', OrderCompleteView.as_view(), name='order-complete'),
+    path('orders/<int:pk>/delete/', OrderDeleteView.as_view(), name='order-delete'),
+
+    # Позиции в заявке (OrderParking)
+    path('order-items/<int:order_id>/<int:parking_id>/delete/', DeleteOrderParkingView.as_view(), name='order-parking-delete'),
+    path('order-items/<int:order_id>/<int:parking_id>/update/', UpdateOrderParkingView.as_view(), name='order-parking-update'),
+
+    # Пользователи
+    path('users/register/', UserRegisterView.as_view(), name='user-register'),
+    path('users/update/', UserUpdateView.as_view(), name='user-update'),
+    path('login/', LoginView.as_view(), name='api_login'),
+    path('logout/', LogoutView.as_view(), name='api_logout'),
 ]

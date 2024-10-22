@@ -5,14 +5,11 @@ x-minio-common: &minio-common
   image: quay.io/minio/minio:RELEASE.2022-10-15T19-57-03Z
   command: server --console-address ":9001" http://minio{1...4}/data{1...2}
   environment:
-    MINIO_ACCESS_KEY: minio
-    MINIO_SECRET_KEY: minio124
+    MINIO_ROOT_USER: minio  # Updated
+    MINIO_ROOT_PASSWORD: minio124  # Updated
   expose:
     - "9000"
     - "9001"
-    # environment:
-    # MINIO_ROOT_USER: minioadmin
-    # MINIO_ROOT_PASSWORD: minioadmin
   healthcheck:
     test: ["CMD", "curl", "-f", "http://localhost:9000/minio/health/live"]
     interval: 30s
@@ -23,6 +20,17 @@ x-minio-common: &minio-common
 # using nginx reverse proxy, load balancing, you can access
 # it through port 9000.
 services:
+  db:
+    image: postgres:13
+    environment:
+      POSTGRES_DB: parking3
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "7782:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
   minio1:
     <<: *minio-common
     hostname: minio1
@@ -65,9 +73,9 @@ services:
       - minio3
       - minio4
 
-## By default this config uses default local driver,
-## For custom volumes replace with volume driver configuration.
+# Define named volumes here, outside the services block
 volumes:
+  postgres_data:
   data1-1:
   data1-2:
   data2-1:
