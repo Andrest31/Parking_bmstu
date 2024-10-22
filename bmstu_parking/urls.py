@@ -1,17 +1,21 @@
 from django.urls import path
 from django.contrib import admin
-from rest_framework import permissions
+from rest_framework import permissions, routers
 from django.urls import path, include
 from drf_yasg.views import get_schema_view
 from drf_yasg import openapi
+from stocks import views
+from rest_framework.routers import DefaultRouter
 
 from stocks.views import (
     ParkingListView, ParkingDetailView, ParkingCreateView, ParkingUpdateView, ParkingDeleteView,
     AddParkingToDraftOrderView, AddImageToParkingView,
     OrderListView, OrderDetailView, OrderUpdateView, OrderFormedView, OrderCompleteView, OrderDeleteView,
     DeleteOrderParkingView, UpdateOrderParkingView,
-    UserRegisterView, UserUpdateView, LoginView, LogoutView
 )
+router = DefaultRouter()
+
+router.register(r'register', views.UserViewSet, basename='register')
 
 schema_view = get_schema_view(
    openapi.Info(
@@ -53,8 +57,7 @@ urlpatterns = [
     path('order-items/<int:order_id>/<int:parking_id>/update/', UpdateOrderParkingView.as_view(), name='order-parking-update'),
 
     # Пользователи
-    path('users/register/', UserRegisterView.as_view(), name='user-register'),
-    path('users/update/', UserUpdateView.as_view(), name='user-update'),
-    path('login/', LoginView.as_view(), name='api_login'),
-    path('logout/', LogoutView.as_view(), name='api_logout'),
+    path('users/', include(router.urls), name='user-register'),
+    path('login/',  views.login_view, name='login'),
+    path('logout/', views.logout_view, name='logout'),
 ]

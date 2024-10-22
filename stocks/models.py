@@ -2,6 +2,11 @@ from django.db import models
 from django.utils import timezone
 from django.contrib.auth.models import User
 import logging
+from django.contrib.auth.models import AbstractBaseUser, BaseUserManager, PermissionsMixin, UserManager, Group, Permission
+from django.db import models
+from django.utils import timezone
+from django.conf import settings
+
 
 logger = logging.getLogger(__name__)
 
@@ -16,8 +21,8 @@ logger = logging.getLogger(__name__)
 # Модель Заказ (Order)
 class Order(models.Model):
     id = models.BigAutoField(primary_key=True)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)  # Пользователь, создавший заявку
-    moderator = models.ForeignKey(User, on_delete=models.SET_NULL, null=True, blank=True, related_name='moderated_orders')
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True)  # Пользователь, создавший заявку
+    moderator = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.SET_NULL, null=True, blank=True, related_name='moderated_orders')
     planned_date = models.DateTimeField(null=True, blank=True)
     planned_deadline = models.DateTimeField(null=True, blank=True)
     created_at = models.DateTimeField(null=True, blank=True, auto_now_add=True)
@@ -73,7 +78,7 @@ class OrderParking(models.Model):
     id = models.BigAutoField(primary_key=True)
     order = models.ForeignKey(Order, models.DO_NOTHING, related_name='parkings')
     parking = models.ForeignKey('Parking', models.DO_NOTHING)
-    user = models.ForeignKey(User, on_delete=models.CASCADE, null=True)  # Добавлено поле user
+    user = models.ForeignKey(settings.AUTH_USER_MODEL, on_delete=models.CASCADE, null=True)  # Добавлено поле user
     quantity = models.IntegerField(default=1)  # Установка значения по умолчанию
 
     class Meta:
@@ -99,3 +104,58 @@ class Parking(models.Model):
 
     class Meta:
         db_table = 'parkings'
+
+class UserManager(BaseUserManager):
+    def create_user(self, email, password=None, **extra_fields):
+        """Создание и возврат нового пользователя с email и паролем."""
+        if not email:
+            raise ValueError('The Email field must be set')
+        email = self.normalize_email(email)
+        user = self.model(email=email, **extra_fields)
+        user.set_password(password)
+        user.save(using=self._db)
+        return user
+
+    def create_superuser(self, email, password=None, **extra_fields):
+        """Создание и возврат нового суперпользователя с email и паролем."""
+        extra_fields.setdefault('is_staff', True)
+        extra_fields.setdefault('is_superuser', True)
+
+        if extra_fields.get('is_staff') is not True:
+            raise ValueError('Superuser must have is_staff=True.')
+        if extra_fields.get('is_superuser') is not True:
+            raise ValueError('Superuser must have is_superuser=True.')
+
+        return self.create_user(email, password, **extra_fields)
+
+class CustomUser(AbstractBaseUser, PermissionsMixin):
+    email = models.EmailField(unique=True)
+    first_name = models.CharField(max_length=30, blank=True)
+    last_name = models.CharField(max_length=30, blank=True)
+    is_active = models.BooleanField(default=True)
+    is_staff = models.BooleanField(default=False)
+    date_joined = models.DateTimeField(default=timezone.now)
+
+    objects = UserManager()  # Устанавливаем свой менеджер пользователей
+
+    USERNAME_FIELD = 'email'
+    REQUIRED_FIELDS = []
+
+    # Уникальные имена для полей связи с группами и разрешениями
+    groups = models.ManyToManyField(
+        Group,
+        related_name='customuser_set',  # Уникальное имя
+        blank=True,
+        help_text='The groups this user belongs to. A user will get all permissions granted to each of their groups.',
+        verbose_name='groups'
+    )
+    user_permissions = models.ManyToManyField(
+        Permission,
+        related_name='customuser_set',  # Уникальное имя
+        blank=True,
+        help_text='Specific permissions for this user.',
+        verbose_name='user permissions'
+    )
+
+    def __str__(self):
+        return self.email

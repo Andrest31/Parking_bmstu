@@ -8,7 +8,7 @@ from django.db.models import Count, Q
 from django.utils import timezone
 from .serializers import *
 from django.utils.timezone import now
-from rest_framework import filters
+from rest_framework import viewsets
 from rest_framework.views import APIView
 from rest_framework.permissions import IsAuthenticated
 from django.db import models
@@ -27,6 +27,18 @@ from minio_storage.storage import MinioStorage
 from rest_framework.decorators import api_view
 from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from django.contrib.auth import authenticate, login, logout
+from django.http import HttpResponse
+from rest_framework.permissions import AllowAny
+from django.views.decorators.csrf import csrf_exempt
+from rest_framework.views import APIView
+from rest_framework.authentication import SessionAuthentication, BasicAuthentication
+from rest_framework.permissions import IsAuthenticated
+from rest_framework.views import APIView
+from rest_framework.response import Response
+from stocks.models import CustomUser  # или откуда у вас импортируется CustomUser
+
+
 
 
 logger = logging.getLogger(__name__)
@@ -577,95 +589,51 @@ class UpdateOrderParkingView(APIView):
         logger.warning("Quantity not provided in request.")
         return Response({'error': 'Не указано количество для обновления'}, status=status.HTTP_400_BAD_REQUEST)
     
-# POST регистрация пользователя
-class UserRegisterView(generics.CreateAPIView):
-    queryset = User.objects.all()
+
+
+
+class UserViewSet(viewsets.ModelViewSet):
+    """Класс, описывающий методы работы с пользователями
+    Осуществляет связь с таблицей пользователей в базе данных
+    """
+    queryset = CustomUser.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [AllowAny]
+    model_class = CustomUser
 
-    @swagger_auto_schema(
-        operation_description="Регистрация нового пользователя",
-        responses={
-            201: openapi.Response(description="Пользователь успешно зарегистрирован"),
-            400: openapi.Response(description="Ошибка валидации"),
-        }
-    )
-    def post(self, request, *args, **kwargs):
-        return super().post(request, *args, **kwargs)
-
-
-# Обновление пользователя
-class UserUpdateView(generics.UpdateAPIView):
-    queryset = User.objects.all()
-    serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]
-
-    def get_object(self):
-        return self.request.user  # Возвращает текущего пользователя
-
-    @swagger_auto_schema(
-        operation_description="Обновление данных пользователя",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'username': openapi.Schema(type=openapi.TYPE_STRING, description='Имя пользователя'),
-                'email': openapi.Schema(type=openapi.TYPE_STRING, description='Электронная почта'),
-                # Добавьте здесь другие поля, которые могут быть обновлены
-            },
-        ),
-        responses={
-            200: openapi.Response(description="Данные пользователя успешно обновлены"),
-            400: openapi.Response(description="Ошибка валидации"),
-        }
-    )
-    def put(self, request, *args, **kwargs):
-        user = self.get_object()  # Получаем текущего пользователя
-        serializer = self.get_serializer(user, data=request.data, partial=True)
-
+    def create(self, request):
+        """
+        Функция регистрации новых пользователей
+        Если пользователя c указанным в request email ещё нет, в БД будет добавлен новый пользователь.
+        """
+        if self.model_class.objects.filter(email=request.data['email']).exists():
+            return Response({'status': 'Exist'}, status=400)
+        serializer = self.serializer_class(data=request.data)
         if serializer.is_valid():
-            serializer.save()
-            return Response(serializer.data, status=status.HTTP_200_OK)
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+            print(serializer.data)
+            self.model_class.objects.create_user(email=serializer.data['email'],
+                                     password=serializer.data['password'],
+                                     is_superuser=serializer.data['is_superuser'],
+                                     is_staff=serializer.data['is_staff'])
+            return Response({'status': 'Success'}, status=200)
+        return Response({'status': 'Error', 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
 
-# Вход пользователя
-class LoginView(generics.GenericAPIView):
-    serializer_class = LoginSerializer
-    permission_classes = [AllowAny]
+@csrf_exempt
+@swagger_auto_schema(method='post', request_body=UserSerializer)
+@api_view(['Post'])
+def login_view(request):
+    email = request.data["email"] # допустим передали username и password
+    password = request.data["password"]
+    user = authenticate(request, email=email, password=password)
+    if user is not None:
+        login(request, user)
+        return HttpResponse("{'status': 'ok'}")
+    else:
+        return HttpResponse("{'status': 'error', 'error': 'login failed'}")
 
-    @swagger_auto_schema(
-        operation_description="Вход пользователя в систему",
-        request_body=openapi.Schema(
-            type=openapi.TYPE_OBJECT,
-            properties={
-                'username': openapi.Schema(type=openapi.TYPE_STRING, description='Имя пользователя'),
-                'password': openapi.Schema(type=openapi.TYPE_STRING, description='Пароль'),
-            },
-        ),
-        responses={
-            200: openapi.Response(description="Пользователь успешно аутентифицирован"),
-            400: openapi.Response(description="Ошибка валидации"),
-        }
-    )
-    def post(self, request, *args, **kwargs):
-        serializer = self.get_serializer(data=request.data)
-
-        if serializer.is_valid():
-            # Аутентификация пользователя
-            return Response({'message': 'User authenticated successfully'}, status=status.HTTP_200_OK)
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)  
+def logout_view(request):
+    logout(request._request)
+    return Response({'status': 'Success'})
 
 
-# Выход пользователя
-class LogoutView(generics.GenericAPIView):
-    permission_classes = [IsAuthenticated]
 
-    @swagger_auto_schema(
-        operation_description="Выход пользователя из системы",
-        responses={
-            200: openapi.Response(description="Пользователь успешно вышел из системы"),
-        }
-    )
-    def post(self, request, *args, **kwargs):
-        return Response({'message': 'User logged out successfully'}, status=status.HTTP_200_OK)

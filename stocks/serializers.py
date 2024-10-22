@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth.models import User
-from .models import Parking, Order, OrderParking
+from .models import Parking, Order, OrderParking, CustomUser
 
 # Сериализатор для модели Parking (услуги)
 class ParkingSerializer(serializers.ModelSerializer):
@@ -91,21 +91,11 @@ class OrderDetailSerializer(serializers.ModelSerializer):
 
 # Сериализатор для модели User (пользователи)
 class UserSerializer(serializers.ModelSerializer):
+    is_staff = serializers.BooleanField(default=False, required=False)
+    is_superuser = serializers.BooleanField(default=False, required=False)
     class Meta:
-        model = User
-        fields = ['id', 'username', 'email', 'password']
-        extra_kwargs = {
-            'password': {'write_only': True, 'help_text': 'Пароль пользователя, не будет возвращен в ответе'},
-            'id': {'help_text': 'Уникальный идентификатор пользователя'},
-            'username': {'help_text': 'Имя пользователя'},
-            'email': {'help_text': 'Электронная почта пользователя'},
-        }
-
-    def create(self, validated_data):
-        user = User(**validated_data)
-        user.set_password(validated_data['password'])  # Хешируем пароль перед сохранением
-        user.save()
-        return user
+        model = CustomUser
+        fields = ['email', 'password', 'is_staff', 'is_superuser']
 
 class LoginSerializer(serializers.Serializer):
     username = serializers.CharField(help_text='Имя пользователя для входа')
