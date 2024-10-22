@@ -87,7 +87,7 @@ WSGI_APPLICATION = 'bmstu_parking.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'parking',
+        'NAME': 'parking3',
         'USER': 'postgres',
         'PASSWORD': 'postgres',
         'HOST': 'localhost',
