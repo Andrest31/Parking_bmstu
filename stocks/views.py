@@ -39,7 +39,14 @@ from rest_framework.response import Response
 from stocks.models import CustomUser  # или откуда у вас импортируется CustomUser
 from stocks.permissions import IsAdmin, IsManager
 
-
+def method_permission_classes(classes):
+        def decorator(func):
+            def decorated_func(self, *args, **kwargs):
+                self.permission_classes = classes        
+                self.check_permissions(self.request)
+                return func(self, *args, **kwargs)
+            return decorated_func
+        return decorator
 
 
 logger = logging.getLogger(__name__)
@@ -68,7 +75,7 @@ class CustomMinioStorage(MinioStorage):
 # GET список услуг с фильтрацией
 class ParkingListView(generics.ListAPIView):
     serializer_class = ParkingSerializer
-    ordering_fields = ['name', 'open_hour']  # Поля для сортировки
+    ordering_fields = ['name', 'open_hour']
 
     @swagger_auto_schema(
         operation_description="Получить список всех парковок",
@@ -87,6 +94,7 @@ class ParkingListView(generics.ListAPIView):
             openapi.Parameter('status', openapi.IN_QUERY, description="Фильтр по статусу (True/False)", type=openapi.TYPE_BOOLEAN),
         ]
     )
+    @method_permission_classes([AllowAny])  # Доступ для всех
     def get_queryset(self):
         draft_order = Order.objects.filter(user=self.request.user, status='draft').first()
         queryset = Parking.objects.all()
@@ -136,7 +144,7 @@ class ParkingListView(generics.ListAPIView):
 
         return Response(response.data)
 
-# GET одна запись услуги
+# Получение деталей парковки
 class ParkingDetailView(generics.RetrieveAPIView):
     queryset = Parking.objects.all()
     serializer_class = ParkingSerializer
@@ -151,10 +159,11 @@ class ParkingDetailView(generics.RetrieveAPIView):
             404: "Парковка не найдена"
         }
     )
+    @method_permission_classes([AllowAny])  # Доступ для всех
     def get(self, request, *args, **kwargs):
         return super().get(request, *args, **kwargs)
 
-# POST добавление услуги
+# Создание парковки
 class ParkingCreateView(generics.CreateAPIView):
     queryset = Parking.objects.all()
     serializer_class = ParkingSerializer
@@ -167,10 +176,11 @@ class ParkingCreateView(generics.CreateAPIView):
             400: "Некорректные данные"
         }
     )
+    @method_permission_classes([IsAdmin | IsManager])  # Доступ только для админов и менеджеров
     def post(self, request, *args, **kwargs):
         return super().post(request, *args, **kwargs)
 
-# PUT изменение услуги
+# Обновление парковки
 class ParkingUpdateView(generics.UpdateAPIView):
     queryset = Parking.objects.all()
     serializer_class = ParkingSerializer
@@ -184,10 +194,11 @@ class ParkingUpdateView(generics.UpdateAPIView):
             404: "Парковка не найдена"
         }
     )
+    @method_permission_classes([IsAdmin | IsManager])  # Доступ только для админов и менеджеров
     def put(self, request, *args, **kwargs):
         return super().put(request, *args, **kwargs)
 
-# DELETE удаление услуги
+# Удаление парковки
 class ParkingDeleteView(generics.DestroyAPIView):
     queryset = Parking.objects.all()
     serializer_class = ParkingSerializer
@@ -199,6 +210,7 @@ class ParkingDeleteView(generics.DestroyAPIView):
             404: "Парковка не найдена"
         }
     )
+    @method_permission_classes([IsAdmin | IsManager])  # Доступ только для админов и менеджеров
     def delete(self, request, *args, **kwargs):
         return super().delete(request, *args, **kwargs)
 
@@ -222,11 +234,12 @@ class AddParkingToDraftOrderView(APIView):
             404: "Парковка не найдена"
         }
     )
+    @method_permission_classes([IsAuthenticated])  # Доступ только для авторизованных
     def post(self, request, pk):
         try:
             parking = Parking.objects.get(pk=pk)
         except Parking.DoesNotExist:
-            return Response({"detail": "Parking not found."}, status=status.HTTP_404_NOT_FOUND)
+            return Response({"detail": "Парковка не найдена."}, status=status.HTTP_404_NOT_FOUND)
 
         order, created = Order.objects.get_or_create(
             user=request.user,
@@ -246,11 +259,11 @@ class AddParkingToDraftOrderView(APIView):
             order_parking.save()
 
         return Response({
-            "detail": "Parking added to draft order.",
+            "detail": "Парковка добавлена в черновик.",
             "quantity": order_parking.quantity
         }, status=status.HTTP_201_CREATED)
 
-# POST добавление изображения для услуги
+# Добавление изображения к парковке
 class AddImageToParkingView(APIView):
     permission_classes = [IsAuthenticated]
 
@@ -271,20 +284,21 @@ class AddImageToParkingView(APIView):
             404: "Парковка не найдена"
         }
     )
+    @method_permission_classes([IsAuthenticated])  # Доступ только для авторизованных
     def post(self, request, pk):
         parking = get_object_or_404(Parking, pk=pk)
         uploaded_file = request.FILES.get('image')
 
         if not uploaded_file:
-            return Response({"detail": "No image uploaded."}, status=status.HTTP_400_BAD_REQUEST)
+            return Response({"detail": "Нет загруженного изображения."}, status=status.HTTP_400_BAD_REQUEST)
 
         if parking.image_card:
             try:
                 minio_client.remove_object(settings.MINIO_STORAGE_MEDIA_BUCKET_NAME, parking.image_card)
-                logger.info(f"Deleted old image: {parking.image_card}")
+                logger.info(f"Удалено старое изображение: {parking.image_card}")
             except S3Error as e:
-                logger.error(f"Error deleting old image: {e}")
-                return Response({"detail": f"Error deleting old image: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                logger.error(f"Ошибка удаления старого изображения: {e}")
+                return Response({"detail": f"Ошибка удаления старого изображения: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         file_name = f"parkings/{parking.id}/{timezone.now().strftime('%Y%m%d%H%M%S')}_{uploaded_file.name}"
         try:
@@ -295,16 +309,16 @@ class AddImageToParkingView(APIView):
                 uploaded_file.size,
                 content_type=uploaded_file.content_type
             )
-            logger.info(f"Uploaded new image: {file_name}")
+            logger.info(f"Загружено новое изображение: {file_name}")
         except S3Error as e:
-            logger.error(f"Error uploading image: {e}")
-            return Response({"detail": f"Error uploading image: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.error(f"Ошибка загрузки изображения: {e}")
+            return Response({"detail": f"Ошибка загрузки изображения: {e}"}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         parking.image_card = file_name
         parking.save()
 
         return Response({
-            "detail": "Image uploaded successfully.", 
+            "detail": "Изображение загружено успешно.", 
             "image_url": minio_client.presigned_get_object(settings.MINIO_STORAGE_MEDIA_BUCKET_NAME, file_name)
         }, status=status.HTTP_200_OK)
 
@@ -312,6 +326,7 @@ class AddImageToParkingView(APIView):
 # GET список заявок с фильтрацией
 class OrderListView(generics.ListAPIView):
     serializer_class = OrderSerializer
+    permission_classes = [AllowAny]  # Доступ всем пользователям
 
     @swagger_auto_schema(
         operation_description="Получить список заявок с возможностью фильтрации",
@@ -349,6 +364,7 @@ class OrderListView(generics.ListAPIView):
 class OrderDetailView(generics.RetrieveAPIView):
     serializer_class = OrderDetailSerializer
     queryset = Order.objects.all()
+    permission_classes = [AllowAny]  # Доступ всем пользователям
 
     @swagger_auto_schema(
         operation_description="Получить информацию о заявке по ID",
@@ -368,10 +384,12 @@ class OrderDetailView(generics.RetrieveAPIView):
         except Order.DoesNotExist:
             raise NotFound("Заказ не найден")
 
+
 # PUT изменение полей заявки
 class OrderUpdateView(generics.UpdateAPIView):
     queryset = Order.objects.all()
     serializer_class = OrderSerializer
+    permission_classes = [IsAuthenticated]  # Доступ только для авторизованных пользователей
 
     @swagger_auto_schema(
         operation_description="Обновить поля заявки",
@@ -381,11 +399,13 @@ class OrderUpdateView(generics.UpdateAPIView):
             404: "Заявка не найдена"
         }
     )
+    @csrf_exempt
     def put(self, request, *args, **kwargs):
         return super().put(request, *args, **kwargs)
 
 # PUT сформировать заявку (создателем)
 class OrderFormedView(APIView):
+    permission_classes = [IsAuthenticated]  # Доступ только для авторизованных пользователей
 
     @swagger_auto_schema(
         operation_description="Сформировать заявку",
@@ -421,7 +441,7 @@ class OrderFormedView(APIView):
 
 # PUT завершить/отклонить заявку (модератором)
 class OrderCompleteView(APIView):
-    permission_classes = [IsAuthenticated]  # Только авторизованные пользователи
+    permission_classes = [IsAdmin]  # Доступ только для модераторов
 
     @swagger_auto_schema(
         operation_description="Завершить или отклонить заявку",
@@ -481,7 +501,7 @@ class OrderCompleteView(APIView):
 
 # DELETE удаление заявки
 class OrderDeleteView(APIView):
-    permission_classes = [IsAuthenticated]  # Только авторизованные пользователи
+    permission_classes = [IsAuthenticated]  # Доступ только для авторизованных пользователей
 
     @swagger_auto_schema(
         operation_description="Удалить заявку по ID",
@@ -510,6 +530,7 @@ class OrderDeleteView(APIView):
     
 
 class DeleteOrderParkingView(APIView):
+    permission_classes = [IsAuthenticated]  # Доступ только для авторизованных пользователей
 
     @swagger_auto_schema(
         operation_description="Удалить позицию из заявки",
@@ -529,17 +550,18 @@ class DeleteOrderParkingView(APIView):
         related_parking = OrderParking.objects.filter(order=order, parking=parking).first()
 
         if not related_parking:
-            return Response({'detail': 'Parking not found in this order'}, status=status.HTTP_404_NOT_FOUND)
+            logger.error(f"Parking {parking_id} not found in order {order_id}")
+            return Response({'detail': 'Паркинг не найден в этой заявке'}, status=status.HTTP_404_NOT_FOUND)
 
         # Удаляем связь
         related_parking.delete()
+        logger.info(f"Removed parking {parking_id} from order {order_id}")
 
-        return Response({'detail': f'Parking {parking_id} removed from order {order_id}'}, status=status.HTTP_200_OK)
-
+        return Response({'detail': f'Паркинг {parking_id} успешно удален из заявки {order_id}'}, status=status.HTTP_200_OK)
 
 # PUT обновление позиции в заявке
 class UpdateOrderParkingView(APIView):
-    permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]  # Доступ только для авторизованных пользователей
 
     @swagger_auto_schema(
         operation_description="Обновить количество паркинга в заявке",
@@ -563,7 +585,7 @@ class UpdateOrderParkingView(APIView):
             order_parking = OrderParking.objects.get(order_id=order_id, parking_id=parking_id, user=user)
         except OrderParking.DoesNotExist:
             logger.error(f"OrderParking with order_id={order_id}, parking_id={parking_id}, user_id={user.id} does not exist.")
-            return Response({'detail': 'No OrderParking matches the given query.'}, status=status.HTTP_404_NOT_FOUND)
+            return Response({'detail': 'Заказ или паркинг не найдены.'}, status=status.HTTP_404_NOT_FOUND)
 
         # Получаем количество из данных запроса
         quantity = request.data.get('quantity')
@@ -582,6 +604,7 @@ class UpdateOrderParkingView(APIView):
             if isinstance(quantity, int) and quantity > 0:
                 order_parking.quantity = quantity
                 order_parking.save()
+                logger.info(f"Updated quantity for order_parking {order_parking.id} to {quantity}")
                 return Response({'status': 'Количество обновлено', 'new_quantity': order_parking.quantity}, status=status.HTTP_200_OK)
             else:
                 logger.warning(f"Invalid quantity received: {quantity}")
@@ -628,28 +651,25 @@ class UserViewSet(viewsets.ModelViewSet):
             return Response({'status': 'Success'}, status=200)
         return Response({'status': 'Error', 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
     
-def method_permission_classes(classes):
-        def decorator(func):
-            def decorated_func(self, *args, **kwargs):
-                self.permission_classes = classes        
-                self.check_permissions(self.request)
-                return func(self, *args, **kwargs)
-            return decorated_func
-        return decorator
 
 
 @csrf_exempt
 @swagger_auto_schema(method='post', request_body=UserSerializer)
-@api_view(['Post'])
+@api_view(['POST'])
 def login_view(request):
-    email = request.data["email"] # допустим передали username и password
-    password = request.data["password"]
+    # Проверяем, содержит ли запрос необходимые поля
+    email = request.data.get("email")
+    password = request.data.get("password")
+
+    if email is None or password is None:
+        return Response({'status': 'error', 'error': 'Email and password are required.'}, status=status.HTTP_400_BAD_REQUEST)
+
     user = authenticate(request, email=email, password=password)
     if user is not None:
-        login(request, user)
-        return HttpResponse("{'status': 'ok'}")
+        login(request, user)  # Устанавливает сессию
+        return Response({'status': 'ok'}, status=status.HTTP_200_OK)
     else:
-        return HttpResponse("{'status': 'error', 'error': 'login failed'}")
+        return Response({'status': 'error', 'error': 'login failed'}, status=status.HTTP_400_BAD_REQUEST)
 
 def logout_view(request):
     logout(request._request)

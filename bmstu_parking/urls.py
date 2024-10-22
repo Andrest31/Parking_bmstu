@@ -34,6 +34,7 @@ urlpatterns = [
     path('admin/', admin.site.urls),
 
     path('swagger/', schema_view.with_ui('swagger', cache_timeout=0), name='schema-swagger-ui'),
+    
 
     # Паркинги (услуги)
     path('parkings/', ParkingListView.as_view(), name='parking-list'),
@@ -58,6 +59,7 @@ urlpatterns = [
 
     # Пользователи
     path('users/', include(router.urls), name='user-register'),
+    path('api-auth/', include('rest_framework.urls', namespace='rest_framework')),
     path('login/',  views.login_view, name='login'),
     path('logout/', views.logout_view, name='logout'),
 ]
