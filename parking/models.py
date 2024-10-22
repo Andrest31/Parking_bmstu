@@ -10,6 +10,7 @@ class Order(models.Model):
     created_at = models.DateTimeField(null=True, blank=True)
     sumbited_at = models.DateTimeField(null=True, blank=True)
     accepted_at = models.DateTimeField(null=True, blank=True)
+    state_number = models.CharField(max_length=10, null=True, blank=True)
     status_choices = [
         ('draft', 'Черновик'),
         ('deleted', 'Удален'),

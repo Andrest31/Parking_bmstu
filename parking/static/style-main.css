@@ -80,7 +80,7 @@ header h1 {
     flex-direction: column; /* Вертикальное расположение элементов */
     align-items: center; /* Центрирование по горизонтали */
     margin-top: 40px; /* Отступ сверху */
-    height: 200px;
+    height: 100px;
 }
 
 .quantity-input {
@@ -114,7 +114,7 @@ header h1 {
 .main {
     left: 200px;
     background-color: #0000b4;
-    padding: 0px 160px;
+    padding: 0px 160px 20px 160px;
     text-align: center;
 }
 
@@ -149,22 +149,21 @@ header h1 {
 }
 
 .product-list {
-    display: flex;
-    justify-content: space-around;
+    display: grid; /* Используем grid для создания сетки */
+    grid-template-columns: repeat(3, 1fr); /* Три колонки */
+    gap: 12px; /* Промежуток между карточками */
     margin-top: 35px;
-    height: 550px;
 }
 
 .product {
     border-radius: 0px;
-    width: 388px;
     box-shadow: 2px 2px black 50%;
-    height: 345px;
     text-align: center;
     color: white;
+    overflow: hidden; /* Чтобы скрыть часть изображения, выходящую за пределы */
 }
 .product-card {
-
+    height: 420px;
     position: relative;
     overflow: hidden; /* Чтобы скрыть часть изображения, выходящую за пределы */
 }

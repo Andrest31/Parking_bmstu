@@ -4,9 +4,10 @@ from parking import views
 
 urlpatterns = [
     path('admin/', admin.site.urls),
-    path('hello/', views.hello, name='hello'),  # Добавьте имя для маршрута
+    path('Parking_BMSTU/', views.Parking_BMSTU, name='Parking_BMSTU'),  # Добавьте имя для маршрута
+    path('Parking_BMSTU/search/', views.ParkingSearch, name='parking_search'),
     path('info/<int:id>/', views.information, name='information'),
-    path('cart/<int:id>/', views.cart, name='cart'),
-    path('add_to_cart/<int:parking_id>/', views.add_to_cart, name='add_to_cart'),
-    path('clear-cart/', views.clear_cart, name='clear_cart'),
+    path('pass/<int:id>/', views.Pass, name='pass'),
+    path('add_to_pass/<int:parking_id>/', views.add_to_Pass, name='add_to_pass'),
+    path('clear-pass/', views.clear_Pass, name='clear_pass'),
 ]

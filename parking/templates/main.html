@@ -12,7 +12,7 @@
 <body>
 
 <header>
-    <a href="http://127.0.0.1:8000/hello" class="headout">
+    <a href="http://127.0.0.1:8000/Parking_BMSTU" class="headout">
         <div>
             <h1>1830</h1>
         </div>
@@ -23,7 +23,7 @@
     <h2>Аренда места</h2>
 
     <!-- Кнопка корзины -->
-    <a href="{% if draft_order %}{% url 'cart' draft_order.id %}{% else %}# {% endif %}" class="cart-button">
+    <a href="{% if draft_order %}{% url 'pass' draft_order.id %}{% else %}# {% endif %}" class="cart-button">
         <img src="{% static 'cart-icon.png' %}" alt="Корзина" class="cart-icon" />
         {% if draft_order %}
             <span class="cart-count">{{ draft_order.parkings.count }}</span>  <!-- Количество элементов в черновом заказе -->
@@ -33,7 +33,8 @@
 
     <div class="categories">
         <p>Время работы: </p>
-        <form>
+        <form action="{% url 'parking_search' %}" method="POST">
+            {% csrf_token %}
             <input type="text" name="text" class="search" placeholder="Поиск">
             <input type="submit" name="submit" class="submit" value="Найти">
         </form>
@@ -59,7 +60,7 @@
                     <div class="price">{{ card.price }}</div>
                     
                     <!-- Добавление поля ввода количества и кнопки "Арендовать" -->
-                    <form action="{% url 'add_to_cart' card.id %}" method="post" class="quantity-form">
+                    <form action="{% url 'add_to_pass' card.id %}" method="post" class="quantity-form">
                         {% csrf_token %}
                         <input type="hidden" name="current_url" value="{{ request.path }}">
                         <input type="number" name="quantity" value="0" min="0" max="{{ card.sports }}" class="quantity-input" required>

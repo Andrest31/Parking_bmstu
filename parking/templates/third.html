@@ -13,25 +13,25 @@
 <body>
     <main>
         <div class="hero">
-            <h2>Оформление заказа</h2>
+            <h2>Оформление пропуска</h2>
             <p class="required-text">Все поля обязательны для заполнения</p>
             <p class="required-text3">Ваше имя</p>
-            <input type="text" id="name" name="name" placeholder="Иванов Иван Иванович" required style="top: 190px;">
+            <input type="text" id="name" name="name" placeholder="Иванов Иван Иванович" value="{{ user_name }}" required style="top: 190px;">
             <p class="required-text4">Гос номер ТС</p>
-            <input type="text" id="license_plate" name="license_plate" placeholder="Н031НН750" required style="top: 265px;">
+            <input type="text" id="license_plate" name="license_plate" placeholder="Н031НН750" value="{{ state_number }}"required style="top: 265px;">            
             <p class="required-text5">Срок действия абонемента</p>
-            <input type="text" id="duration" name="duration" placeholder="ДД.ММ.ГГГГ" required style="top: 340px;">
-
-            <a href="http://127.0.0.1:8000/hello/#" class="headout">
+            <input type="text" id="duration" name="duration" placeholder="ДД.ММ.ГГГГ" value="{{ planned_deadline }}" required style="top: 340px;">
+            <a href="http://127.0.0.1:8000/Parking_BMSTU/#" class="headout">
                 <div>
                     <h1>1830</h1>
                 </div>
             </a>
-            <p class="required-text2">Информация о заказе</p>
             
 
             <!-- Контейнер для карточек с информацией -->
             {% if draft_order.parkings.exists %}
+                <p class="required-text2">Информация о пропуске</p>
+
                 <div class="info-cards-container">
                     {% for order_parking in draft_order.parkings.all %}
                         <div class="info-card">
@@ -42,11 +42,10 @@
                     {% endfor %}
                 </div>
             {% else %}
-                <p>Корзина пуста.</p>
-                <a href="{% url 'hello' %}" class="go-back">Вернуться на главную</a>
+                <p class="required-text2" required style="right: 190px; top:180px;">Данного пропуска не существует </p>
             {% endif %}
 
-            <a href="{% url 'clear_cart' %}" class="clear-button">Очистить</a>
+            <a href="{% url 'clear_pass' %}" class="clear-button">Очистить</a>
 
             <div class="image-container">
                 <img src="{{'http://localhost:9000/mini/images/building4.jpg'}}" alt="Задний фон">
