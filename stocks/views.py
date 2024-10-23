@@ -38,6 +38,12 @@ from rest_framework.views import APIView
 from rest_framework.response import Response
 from stocks.models import CustomUser  # или откуда у вас импортируется CustomUser
 from stocks.permissions import IsAdmin, IsManager
+import redis
+
+REDIS_HOST = 'localhost'
+REDIS_PORT = 6379
+# Connect to our Redis instance
+session_storage = redis.StrictRedis(host=REDIS_HOST, port=REDIS_PORT)
 
 def method_permission_classes(classes):
         def decorator(func):
@@ -652,28 +658,25 @@ class UserViewSet(viewsets.ModelViewSet):
         return Response({'status': 'Error', 'error': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
     
 
-
-@csrf_exempt
+import uuid
 @swagger_auto_schema(method='post', request_body=UserSerializer)
 @api_view(['POST'])
 def login_view(request):
-    # Проверяем, содержит ли запрос необходимые поля
-    email = request.data.get("email")
-    password = request.data.get("password")
-
-    if email is None or password is None:
-        return Response({'status': 'error', 'error': 'Email and password are required.'}, status=status.HTTP_400_BAD_REQUEST)
-
-    user = authenticate(request, email=email, password=password)
+    username = request.data["email"] 
+    password = request.data["password"]
+    user = authenticate(request, email=username, password=password)
     if user is not None:
-        login(request, user)  # Устанавливает сессию
-        return Response({'status': 'ok'}, status=status.HTTP_200_OK)
+        login(request, user)
+        random_key = str(uuid.uuid4())
+        session_storage.set(random_key, username)
+
+        response = HttpResponse("{'status': 'ok'}")
+        response.set_cookie("session_id", random_key)
+
+        return response
     else:
-        return Response({'status': 'error', 'error': 'login failed'}, status=status.HTTP_400_BAD_REQUEST)
+        return HttpResponse("{'status': 'error', 'error': 'login failed'}")
 
 def logout_view(request):
     logout(request._request)
     return Response({'status': 'Success'})
-
-
-
