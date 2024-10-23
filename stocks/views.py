@@ -334,12 +334,30 @@ class OrderListView(generics.ListAPIView):
     serializer_class = OrderSerializer
     permission_classes = [AllowAny]  # Доступ всем пользователям
 
+    # Используем @swagger_auto_schema непосредственно над методом get()
     @swagger_auto_schema(
-        operation_description="Получить список заявок с возможностью фильтрации",
+        operation_description="Получить список заявок с возможностью фильтрации по дате и статусу",
         manual_parameters=[
-            openapi.Parameter('start_date', openapi.IN_QUERY, description="Дата начала фильтрации", type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE),
-            openapi.Parameter('end_date', openapi.IN_QUERY, description="Дата окончания фильтрации", type=openapi.TYPE_STRING, format=openapi.FORMAT_DATE),
-            openapi.Parameter('status', openapi.IN_QUERY, description="Статус заявки (например, 'formed', 'completed', 'rejected')", type=openapi.TYPE_STRING),
+            openapi.Parameter(
+                'start_date',
+                openapi.IN_QUERY,
+                description="Дата начала фильтрации (в формате YYYY-MM-DD)",
+                type=openapi.TYPE_STRING,
+                format=openapi.FORMAT_DATE
+            ),
+            openapi.Parameter(
+                'end_date',
+                openapi.IN_QUERY,
+                description="Дата окончания фильтрации (в формате YYYY-MM-DD)",
+                type=openapi.TYPE_STRING,
+                format=openapi.FORMAT_DATE
+            ),
+            openapi.Parameter(
+                'status',
+                openapi.IN_QUERY,
+                description="Статус заявки (например, 'formed', 'completed', 'rejected')",
+                type=openapi.TYPE_STRING
+            ),
         ],
         responses={
             200: openapi.Response(
@@ -348,6 +366,9 @@ class OrderListView(generics.ListAPIView):
             ),
         }
     )
+    def get(self, request, *args, **kwargs):
+        return super().get(request, *args, **kwargs)
+
     def get_queryset(self):
         queryset = Order.objects.exclude(status='deleted').exclude(status='draft')  # Не показывать удаленные и черновики
         
@@ -358,9 +379,15 @@ class OrderListView(generics.ListAPIView):
 
         # Фильтрация по дате
         if start_date:
-            queryset = queryset.filter(created_at__gte=datetime.fromisoformat(start_date))
+            try:
+                queryset = queryset.filter(created_at__gte=datetime.fromisoformat(start_date))
+            except ValueError:
+                pass  # Обработка ошибки, если формат даты неправильный
         if end_date:
-            queryset = queryset.filter(created_at__lte=datetime.fromisoformat(end_date))
+            try:
+                queryset = queryset.filter(created_at__lte=datetime.fromisoformat(end_date))
+            except ValueError:
+                pass  # Обработка ошибки, если формат даты неправильный
         if status:
             queryset = queryset.filter(status=status)
 
@@ -659,7 +686,9 @@ class UserViewSet(viewsets.ModelViewSet):
     
 
 import uuid
-@swagger_auto_schema(method='post', request_body=UserSerializer)
+
+@swagger_auto_schema(method='post', request_body=LoginSerializer)
+
 @api_view(['POST'])
 def login_view(request):
     username = request.data["email"] 

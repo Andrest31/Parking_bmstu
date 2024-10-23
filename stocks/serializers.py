@@ -98,5 +98,5 @@ class UserSerializer(serializers.ModelSerializer):
         fields = ['email', 'password', 'is_staff', 'is_superuser']
 
 class LoginSerializer(serializers.Serializer):
-    username = serializers.CharField(help_text='Имя пользователя для входа')
+    email = serializers.CharField(help_text='Имя пользователя для входа')
     password = serializers.CharField(write_only=True, help_text='Пароль для входа')

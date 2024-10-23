@@ -47,7 +47,7 @@ class Order(models.Model):
         db_table = 'orders'
 
     def complete(self, user):
-        logger.info(f"Completing order {self.id} by moderator {user.username}")
+        logger.info(f"Completing order {self.id} by moderator {settings.AUTH_USER_MODEL}")
         self.status = 'completed'
         self.moderator = user
         self.completed_at = timezone.now()
@@ -55,7 +55,7 @@ class Order(models.Model):
         logger.info(f"Order {self.id} completed with status {self.status}")
 
     def reject(self, user):
-        logger.info(f"Rejecting order {self.id} by moderator {user.username}")
+        logger.info(f"Rejecting order {self.id} by moderator {settings.AUTH_USER_MODEL}")
         self.status = 'rejected'
         self.moderator = user
         self.rejected_at = timezone.now()
